@@ -28,7 +28,8 @@ const corsOptions = {
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     // Production frontend URLs
-    "https://jobportal-frontend.onrender.com", // Replace with actual frontend URL
+    "https://job-portal-frontend-zeta-five.vercel.app", // Your Vercel frontend
+    "https://jobportal-frontend.onrender.com", // Render frontend (backup)
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
