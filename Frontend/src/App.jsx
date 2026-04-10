@@ -2,14 +2,21 @@ import React from "react";
 import Navbar from "./components/components_lite/Navbar";
 import Login from "./components/authentication/Login";
 import Register from "./components/authentication/Register";
+import SendOTP from "./components/authentication/SendOTP";
+import OTPVerification from "./components/authentication/OTPVerification";
+import CompleteRegistration from "./components/authentication/CompleteRegistration";
+import ResetPassword from "./components/authentication/ResetPassword";
+import TempPasswordUpdate from "./components/authentication/TempPasswordUpdate";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import Home from "./components/components_lite/Home";
+import About from "./pages/About";
 import PrivacyPolicy from "./components/components_lite/PrivacyPolicy.jsx";
 import TermsofService from "./components/components_lite/TermsofService.jsx";
 import Jobs from "./components/components_lite/Jobs.jsx";
 import Browse from "./components/components_lite/Browse.jsx";
 import Profile from "./components/components_lite/Profile.jsx";
 import Description from "./components/components_lite/Description.jsx";
+import MyList from "./components/components_lite/MyList.jsx";
 import Companies from "./components/admincomponent/Companies";
 import CompanyCreate from "./components/admincomponent/CompanyCreate";
 import CompanySetup from "./components/admincomponent/CompanySetup";
@@ -30,8 +37,32 @@ const appRouter = createBrowserRouter([
     element: <Register />,
   },
   {
+    path: "/send-otp",
+    element: <SendOTP />,
+  },
+  {
+    path: "/verify-otp",
+    element: <OTPVerification />,
+  },
+  {
+    path: "/complete-registration",
+    element: <CompleteRegistration />,
+  },
+  {
+    path: "/reset-password",
+    element: <ResetPassword />,
+  },
+  {
+    path: "/update-password",
+    element: <TempPasswordUpdate />,
+  },
+  {
     path: "/description/:id",
     element: <Description />,
+  },
+  {
+    path: "/about",
+    element: <About />,
   },
   {
     path: "/Profile",
@@ -60,6 +91,10 @@ const appRouter = createBrowserRouter([
   {
     path:"/Creator",
     element: <Creator/>
+  },
+  {
+    path: "/MyList",
+    element: <MyList />,
   },
 
   // /admin

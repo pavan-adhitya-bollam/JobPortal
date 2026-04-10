@@ -11,12 +11,18 @@ const useGetAllJobs = () => {
   const { searchedQuery } = useSelector((store) => store.job);
 
   useEffect(() => {
+    console.log("useGetAllJobs triggered with searchedQuery:", searchedQuery);
     const fetchAllJobs = async () => {
       setLoading(true);
       setError(null);
       try {
+        // Capture the searchedQuery at this moment to avoid timing issues
+        const currentQuery = searchedQuery;
+        const url = `${JOB_API_ENDPOINT}/get?keyword=${encodeURIComponent(currentQuery)}`;
+        console.log("Calling API URL:", url);
+        console.log("Using currentQuery:", currentQuery);
         const res = await axios.get(
-          `${JOB_API_ENDPOINT}/get?keyword=${searchedQuery}`,
+          url,
           {
             withCredentials: true,
           }
@@ -37,7 +43,7 @@ const useGetAllJobs = () => {
     };
 
     fetchAllJobs();
-  }, [dispatch]);
+  }, [dispatch, searchedQuery]);
 
   return { loading, error };
 };

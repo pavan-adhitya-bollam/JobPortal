@@ -4,6 +4,9 @@ import {
   logout,
   register,
   updateProfile,
+  sendOTP,
+  verifyOTP,
+  completeRegistration,
 } from "../controllers/user.controller.js";
 import authenticateToken from "../middleware/isAuthenticated.js";
 import { singleUpload } from "../middleware/multer.js";
@@ -16,5 +19,10 @@ router.route("/logout").post(logout);
 router
   .route("/profile/update")
   .post(authenticateToken, singleUpload, updateProfile);
+
+// OTP Routes
+router.route("/send-otp").post(sendOTP);
+router.route("/verify-otp").post(verifyOTP);
+router.route("/complete-registration").post(singleUpload, completeRegistration);
 
 export default router;

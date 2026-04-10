@@ -16,7 +16,7 @@ const Profile = () => {
   const [open, setOpen] = useState(false);
   const { user } = useSelector((store) => store.auth);
   return (
-    <div>
+    <div className="min-h-screen bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50">
       <Navbar />
 
       <div className="max-w-4xl mx-auto  bg-white border border-gray-200 rounded-2xl my-5 p-8 shadow shadow-gray-400 hover:shadow-yellow-400">
@@ -24,8 +24,17 @@ const Profile = () => {
           <div className="flex items-center gap-5">
             <Avatar className="cursor-pointer h-24 w-24">
               <AvatarImage
-                src={user?.profile?.profilePhoto}
+                src={
+                  user?.profile?.profilePhoto 
+                    ? (user.profile.profilePhoto.startsWith('http') 
+                        ? user.profile.profilePhoto 
+                        : `http://localhost:5001${user.profile.profilePhoto}`)
+                    : "https://via.placeholder.com/150"
+                }
                 alt="@shadcn"
+                onError={(e) => {
+                  e.target.src = "https://via.placeholder.com/150";
+                }}
               />
             </Avatar>
             <div>
@@ -34,7 +43,12 @@ const Profile = () => {
             </div>
           </div>
           <Button
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              console.log("Edit button clicked");
+              console.log("Current open state:", open);
+              setOpen(true);
+              console.log("After setOpen, open state should be true");
+            }}
             className="text-right"
             variant="outline"
           >
@@ -82,7 +96,7 @@ const Profile = () => {
                   className="text-blue-600 hover:underline cursor-pointer"
                 >
                   Download
-                  {user?.profile?.resumeOriginalName}
+                  {user?.profile?.resumeOriginalname || 'Resume'}
                 </a>
               ) : (
                 <span>No Resume Found</span>

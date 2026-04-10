@@ -1,9 +1,9 @@
 import { User } from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import getDataUri from "../utils/datauri.js";
-import cloudinary from "../utils/cloud.js";
+import { generateAndSendOTP } from "../utils/emailService.js";
 
+// ================= REGISTER =================
 export const register = async (req, res) => {
   try {
     const { fullname, email, phoneNumber, password, adharcard, pancard, role } = req.body;
@@ -40,15 +40,17 @@ export const register = async (req, res) => {
     }
 
     const file = req.file;
-    if (!file) {
-      return res.status(400).json({
-        message: "Profile image is required",
-        success: false,
-      });
+    let profilePhotoUrl = "https://via.placeholder.com/150"; // default
+    
+    if (file) {
+      console.log("File received:", file);
+      // If it's an image file, use it as profile photo
+      if (file.mimetype.startsWith('image/')) {
+        profilePhotoUrl = `/uploads/${file.filename}`;
+      }
+    } else {
+      console.log("No file received, using default profile photo");
     }
-
-    const fileUri = getDataUri(file);
-    const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -61,7 +63,7 @@ export const register = async (req, res) => {
       password: hashedPassword,
       role,
       profile: {
-        profilePhoto: cloudResponse.secure_url,
+        profilePhoto: profilePhotoUrl, // Use the uploaded file URL or default
       },
     });
 
@@ -73,18 +75,21 @@ export const register = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
+    return res.status(500).json({
       message: "Server Error registering user",
       success: false,
     });
   }
 };
 
+// ================= LOGIN =================
 export const login = async (req, res) => {
   try {
+    console.log('Login request received:', req.body);
     const { email, password, role } = req.body;
 
     if (!email || !password || !role) {
+      console.log('Missing required fields:', { email: !!email, password: !!password, role: !!role });
       return res.status(400).json({
         message: "Missing required fields",
         success: false,
@@ -93,14 +98,18 @@ export const login = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user) {
+      console.log('User not found for email:', email);
       return res.status(404).json({
         message: "Incorrect email or password",
         success: false,
       });
     }
 
+    console.log('User found:', user.email, 'Role:', user.role);
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
+      console.log('Password mismatch for email:', email);
       return res.status(400).json({
         message: "Incorrect email or password",
         success: false,
@@ -108,74 +117,74 @@ export const login = async (req, res) => {
     }
 
     if (user.role !== role) {
+      console.log('Role mismatch. User role:', user.role, 'Requested role:', role);
       return res.status(403).json({
-        message: "You don't have the necessary role to access this resource",
+        message: "Invalid role",
         success: false,
       });
     }
 
-    const tokenData = {
-      userId: user._id,
-    };
-    const token = jwt.sign(tokenData, process.env.JWT_SECRET, {
-      expiresIn: "1d",
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user._id, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Set token in cookie
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: false, // Set to true in production with HTTPS
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
     });
 
-    const sanitizedUser = {
-      _id: user._id,
-      fullname: user.fullname,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-      adharcard: user.adharcard,
-      pancard: user.pancard,
-      role: user.role,
-      profile: user.profile,
-    };
-
-    return res
-      .status(200)
-      .cookie("token", token, {
-        maxAge: 24 * 60 * 60 * 1000,
-        httpOnly: true,
-        sameSite: "Strict",
-      })
-      .json({
-        message: `Welcome back ${user.fullname}`,
-        user: sanitizedUser,
-        success: true,
-      });
+    return res.status(200).json({
+      message: `Welcome back ${user.fullname}`,
+      success: true,
+      user,
+      token
+    });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      message: "Server Error login failed",
+    return res.status(500).json({
+      message: "Login failed",
       success: false,
     });
   }
 };
 
+// ================= LOGOUT =================
 export const logout = async (req, res) => {
   try {
-    return res.status(200).cookie("token", "", { maxAge: 0 }).json({
+    // Clear the token cookie
+    res.clearCookie('token');
+    
+    return res.status(200).json({
       message: "Logged out successfully",
       success: true,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({
-      message: "Server Error logging out",
+    return res.status(500).json({
+      message: "Logout failed",
       success: false,
     });
   }
 };
 
+// ================= UPDATE PROFILE =================
 export const updateProfile = async (req, res) => {
   try {
+    const userId = req.id;
     const { fullname, email, phoneNumber, bio, skills } = req.body;
-    const file = req.file;
-
-    const userId = req.id; // Assuming authentication middleware sets req.id
+    
+    console.log("=== PROFILE UPDATE DEBUG ===");
+    console.log("User ID:", userId);
+    console.log("Request body:", { fullname, email, phoneNumber, bio, skills });
+    
+    // Find the user
     const user = await User.findById(userId);
-
     if (!user) {
       return res.status(404).json({
         message: "User not found",
@@ -183,373 +192,251 @@ export const updateProfile = async (req, res) => {
       });
     }
 
-    if (fullname) user.fullname = fullname;
-    if (email) user.email = email;
-    if (phoneNumber) user.phoneNumber = phoneNumber;
-    if (bio) user.profile.bio = bio;
-    if (skills) user.profile.skills = skills.split(",");
+    console.log("Current user:", user.email);
+    console.log("New email:", email);
+    console.log("Email comparison:", email !== user.email);
 
-    if (file) {
-      const fileUri = getDataUri(file);
-      const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
-      user.profile.resume = cloudResponse.secure_url;
-      user.profile.resumeOriginalName = file.originalname;
+    // Update basic fields
+    if (fullname) user.fullname = fullname;
+    if (email && email !== user.email) {
+      // Check if new email already exists (exclude current user)
+      const existingUser = await User.findOne({ 
+        email: email,
+        _id: { $ne: userId } // Exclude current user
+      });
+      if (existingUser) {
+        return res.status(400).json({
+          message: "Email already exists",
+          success: false,
+        });
+      }
+      user.email = email;
+    }
+    if (phoneNumber) user.phoneNumber = phoneNumber;
+    
+    // Update profile fields
+    if (bio !== undefined) user.profile.bio = bio;
+    if (skills) {
+      // Handle skills - if it's a string, split by comma; if array, use as is
+      const skillsArray = typeof skills === 'string' ? skills.split(',').map(s => s.trim()) : skills;
+      user.profile.skills = skillsArray;
+    }
+    
+    // Update profile photo if file was uploaded
+    if (req.file) {
+      user.profile.profilePhoto = `/uploads/${req.file.filename}`;
+      user.profile.profilePhotoOriginalname = req.file.originalname;
     }
 
+    // Save the updated user
     await user.save();
-
-    const updatedUser = {
-      _id: user._id,
-      fullname: user.fullname,
-      email: user.email,
-      phoneNumber: user.phoneNumber,
-      role: user.role,
-      profile: user.profile,
-    };
 
     return res.status(200).json({
       message: "Profile updated successfully",
-      user: updatedUser,
       success: true,
+      user: {
+        _id: user._id,
+        fullname: user.fullname,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        role: user.role,
+        profile: user.profile,
+        createdAt: user.createdAt,
+      }
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({
-      message: "Server Error updating profile",
+    console.error("Profile update error:", error);
+    return res.status(500).json({
+      message: "Server error during profile update",
       success: false,
     });
   }
 };
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// import { User } from "../models/user.model.js";
-// import bcrypt from "bcryptjs";
-// import jwt from "jsonwebtoken";
-// import getDataUri from "../utils/datauri.js";
-// import cloudinary from "../utils/cloud.js";
-
-// export const register = async (req, res) => {
-//   try {
-//     const { fullname, email, phoneNumber, password, adharcard, pancard, role } =
-//       req.body;
-
-//     if (
-//       !fullname ||
-//       !email ||
-//       !phoneNumber ||
-//       !password ||
-//       !role ||
-//       !pancard ||
-//       !adharcard
-//     ) {
-//       return res.status(404).json({
-//         message: "Missing required fields",
-//         success: false,
-//       });
-//     }
-//     const file = req.file;
-//     const fileUri = getDataUri(file);
-//     const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
-
-//     const user = await User.findOne({ email });
-//     if (user) {
-//       return res.status(400).json({
-//         message: "Email already exists",
-//         success: false,
-//       });
-//     }
-//     const user = await User.findOne({ adharcard });
-//     if (adharcard) {
-//       return res.status(400).json({
-//         message: "Adharnumber already exists",
-//         success: false,
-//       });
-//     }
-//     const user = await User.findOne({ pancard });
-//     if (pancard) {
-//       return res.status(400).json({
-//         message: "Pan number already exists",
-//         success: false,
-//       });
-//     }
-//     //convert passwords to hashes
-//     const hashedPassword = await bcrypt.hash(password, 10);
-
-//     const newUser = new User({
-//       fullname,
-//       email,
-//       phoneNumber,
-//       adharcard,
-//       pancard,
-//       password: hashedPassword,
-//       role,
-//       profile: {
-//         profilePhoto: cloudResponse.secure_url,
-//       },
-//     });
-
-//     await newUser.save();
-
-//     return res.status(200).json({
-//       message: `Account created successfully ${fullname}`,
-//       success: true,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({
-//       message: "Server Error registering user",
-//       success: false,
-//     });
-//   }
-// };
-
-// export const login = async (req, res) => {
-//   try {
-//     const { email, password, role } = req.body;
-
-//     if (!email || !password || !adharcard || !role) {
-//       return res.status(404).json({
-//         message: "Missing required fields",
-//         success: false,
-//       });
-//     }
-//     let user = await User.findOne({ email });
-//     if (!user) {
-//       return res.status(404).json({
-//         message: "Incorrect email or password",
-//         success: false,
-//       });
-//     }
-//     let user = await User.findOne({ adharcard });
-//     if (adharcard) {
-//       return res.status(404).json({
-//         message: "Incorrect Adhar Number",
-//         success: false,
-//       });
-//     }
-//     const isMatch = await bcrypt.compare(password, user.password);
-//     if (!isMatch) {
-//       return res.status(404).json({
-//         message: "Incorrect email or password",
-//         success: false,
-//       });
-//     }
-//     //check role correctly or not
-//     if (user.role !== role) {
-//       return res.status(403).json({
-//         message: "You don't have the necessary role to access this resource",
-//         success: false,
-//       });
-//     }
-
-//     //generate token
-//     const tokenData = {
-//       userId: user._id,
-//     };
-//     const token = await jwt.sign(tokenData, process.env.JWT_SECRET, {
-//       expiresIn: "1d",
-//     });
-
-//     user = {
-//       _id: user._id,
-//       fullname: user.fullname,
-//       email: user.email,
-//       phoneNumber: user.phoneNumber,
-//       adharcard: user.adharcard,
-//       pancard: user.pancard,
-//       role: user.role,
-//       profile: user.profile,
-//     };
-
-//     return res
-//       .status(200)
-//       .cookie("token", token, {
-//         maxAge: 1 * 24 * 60 * 60 * 1000,
-//         httpOnly: true,
-//         sameSite: "Strict",
-//       })
-//       .json({
-//         message: `Welcome back ${user.fullname}`,
-//         user,
-//         success: true,
-//       });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({
-//       message: "Server Error login failed",
-//       success: false,
-//     });
-//   }
-// };
-
-// export const logout = async (req, res) => {
-//   try {
-//     return res.status(200).cookie("token", "", { maxAge: 0 }).json({
-//       message: "Logged out successfully.",
-//       success: true,
-//     });
-//   } catch (error) {
-//     console.log(error);
-//   }
-// };
-
-// export const updateProfile = async (req, res) => {
-//   try {
-//     console.log("Uploaded file:", req.file);
-//     console.log("Request body:", req.body);
-
-//     const { fullname, email, phoneNumber, bio, skills } = req.body;
-//     const file = req.file;
-
-//     // Check if file is uploaded
-
-//     //cloudinary upload
-//     const fileUri = getDataUri(file);
-//     const cloudResponse = await cloudinary.uploader.upload(fileUri.content);
-
-//     // Initialize userId at the beginning
-//     const userId = req.id; // middleware authentication
-
-//     // Check if userId is valid
-//     let user = await User.findById(userId);
-//     if (!user) {
-//       return res.status(404).json({
-//         message: "User  not found",
-//         success: false,
-//       });
-//     }
-
-//     // Process skills if provided
-//     let skillsArray;
-//     if (skills) {
-//       skillsArray = skills.split(",");
-//     }
-
-//     // Update user profile
-//     if (fullname) {
-//       user.fullname = fullname;
-//     }
-//     if (email) {
-//       user.email = email;
-//     }
-//     if (phoneNumber) {
-//       user.phoneNumber = phoneNumber;
-//     }
-//     if (bio) {
-//       user.profile.bio = bio;
-//     }
-//     if (skills) {
-//       user.profile.skills = skillsArray;
-//     }
-//     //resume
-//     if (cloudResponse) {
-//       user.profile.resume = cloudResponse.secure_url;
-//       user.profile.resumeOriginalName = file.originalname;
-//     }
-
-//     // Save updated user
-//     await user.save();
-
-//     user = {
-//       _id: user._id,
-//       fullname: user.fullname,
-//       email: user.email,
-//       phoneNumber: user.phoneNumber,
-//       role: user.role,
-//       profile: user.profile,
-//     };
-
-//     return res.status(200).json({
-//       message: "Profile updated successfully",
-//       user,
-//       success: true,
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({
-//       message: "Server Error updating profile",
-//       success: false,
-//     });
-//   }
-// };
+// ================= SEND OTP =================
+export const sendOTP = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        message: "Email is required",
+        success: false,
+      });
+    }
+
+    // Check if email already exists and is verified
+    const existingUser = await User.findOne({ email, isEmailVerified: true });
+    if (existingUser) {
+      return res.status(400).json({
+        message: "Email is already registered and verified",
+        success: false,
+      });
+    }
+
+    // Generate and send OTP via email
+    const otpData = await generateAndSendOTP(email);
+    if (!otpData) {
+      return res.status(500).json({
+        message: "Failed to send OTP to email",
+        success: false,
+      });
+    }
+
+    // Find or create user
+    let user = await User.findOne({ email });
+    if (!user) {
+      // Create temporary user record with OTP
+      user = new User({
+        email,
+        emailVerificationOTP: otpData.otp,
+        emailVerificationExpires: otpData.expiresAt,
+        isEmailVerified: false,
+        fullname: 'temp', // Temporary values
+        phoneNumber: 'temp',
+        password: 'temp', // Will be updated later
+        adharcard: 'temp',
+        pancard: 'temp',
+        role: 'Student',
+      });
+    } else {
+      // Update existing user's OTP
+      user.emailVerificationOTP = otpData.otp;
+      user.emailVerificationExpires = otpData.expiresAt;
+    }
+    
+    await user.save();
+
+    console.log(`OTP sent to ${email}: ${otpData.otp}`);
+
+    // Check if email is configured to determine response
+    const isEmailConfigured = process.env.EMAIL_USER && 
+                              process.env.EMAIL_PASS && 
+                              process.env.EMAIL_USER !== 'your-gmail-address@gmail.com' && 
+                              process.env.EMAIL_PASS !== 'your-16-character-app-password';
+
+    if (isEmailConfigured) {
+      return res.status(200).json({
+        message: "OTP sent to your email address",
+        success: true,
+      });
+    } else {
+      return res.status(200).json({
+        message: "OTP sent to your email (Test Mode - check console)",
+        success: true,
+        testOTP: otpData.otp, // Include OTP for testing
+      });
+    }
+  } catch (error) {
+    console.error("Send OTP error:", error);
+    return res.status(500).json({
+      message: "Failed to send OTP",
+      success: false,
+    });
+  }
+};
+
+// ================= VERIFY OTP =================
+export const verifyOTP = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        message: "Email and OTP are required",
+        success: false,
+      });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+        success: false,
+      });
+    }
+
+    // Check if OTP is valid and not expired
+    if (user.emailVerificationOTP !== otp) {
+      return res.status(400).json({
+        message: "Invalid OTP",
+        success: false,
+      });
+    }
+
+    if (new Date() > user.emailVerificationExpires) {
+      return res.status(400).json({
+        message: "OTP has expired",
+        success: false,
+      });
+    }
+
+    // Mark email as verified
+    user.isEmailVerified = true;
+    user.emailVerificationOTP = undefined;
+    user.emailVerificationExpires = undefined;
+    await user.save();
+
+    return res.status(200).json({
+      message: "Email verified successfully",
+      success: true,
+    });
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+    return res.status(500).json({
+      message: "Failed to verify OTP",
+      success: false,
+    });
+  }
+};
+
+// ================= COMPLETE REGISTRATION =================
+export const completeRegistration = async (req, res) => {
+  try {
+    const { email, fullname, phoneNumber, password, adharcard, pancard, role } = req.body;
+
+    if (!fullname || !email || !phoneNumber || !password || !role || !pancard || !adharcard) {
+      return res.status(400).json({
+        message: "Missing required fields",
+        success: false,
+      });
+    }
+
+    const file = req.file;
+    let profilePhotoUrl = "https://via.placeholder.com/150";
+    
+    if (file && file.mimetype.startsWith('image/')) {
+      profilePhotoUrl = `/uploads/${file.filename}`;
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create new user
+    const newUser = new User({
+      fullname,
+      email,
+      phoneNumber,
+      adharcard,
+      pancard,
+      password: hashedPassword,
+      role,
+      profile: {
+        profilePhoto: profilePhotoUrl,
+      },
+      isEmailVerified: true,
+    });
+
+    await newUser.save();
+
+    return res.status(201).json({
+      message: `Registration completed successfully for ${fullname}`,
+      success: true,
+    });
+  } catch (error) {
+    console.error("Complete registration error:", error);
+    return res.status(500).json({
+      message: "Server Error completing registration",
+      success: false,
+    });
+  }
+};
