@@ -27,9 +27,8 @@ const corsOptions = {
     "http://172.27.240.1:5174",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    // Add your production frontend URLs here
-    // Replace with your actual deployed frontend URL
-    // Example: "https://your-app.vercel.app", "https://your-app.netlify.app"
+    // Production frontend URLs
+    "https://jobportal-frontend.onrender.com", // Replace with actual frontend URL
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
