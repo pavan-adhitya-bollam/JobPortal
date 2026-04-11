@@ -94,14 +94,38 @@ export const generateAndSendOTP = async (email) => {
   const otp = generateOTP();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
   
-  const emailResult = await sendOTPEmail(email, otp);
+  console.log('=== SENDING OTP ===');
+  console.log('Email:', email);
+  console.log('OTP:', otp);
+  console.log('Expires:', expiresAt);
   
-  if (emailResult.success) {
+  try {
+    const emailResult = await sendOTPEmail(email, otp);
+    console.log('Email result:', emailResult);
+    
+    if (emailResult.success) {
+      console.log('✅ OTP sent successfully to', email);
+      return { otp, expiresAt };
+    } else {
+      console.log('❌ Email failed but continuing with OTP generation');
+      return { otp, expiresAt };
+    }
+  } catch (error) {
+    console.log('❌ Critical error in generateAndSendOTP:', error);
     return { otp, expiresAt };
-  } else {
-    // Still return OTP data even if email fails, so registration can continue
-    console.log('Email failed but continuing with OTP generation');
-    return { otp, expiresAt };
+  }
+};
+
+// Test email connection
+export const testEmailConnection = async () => {
+  try {
+    console.log('=== TESTING EMAIL CONNECTION ===');
+    await transporter.verify();
+    console.log('✅ Email connection verified');
+    return true;
+  } catch (error) {
+    console.log('❌ Email connection failed:', error.message);
+    return false;
   }
 };
 
