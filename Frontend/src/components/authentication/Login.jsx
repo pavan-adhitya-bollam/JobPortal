@@ -4,7 +4,6 @@ import { Label } from "../ui/label";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Navigate, useNavigate } from "react-router-dom";
-import { RadioGroup } from "../ui/radio-group";
 import { Link } from "react-router-dom";
 import axios from "axios";
 import { USER_API_ENDPOINT, AUTH_API_ENDPOINT } from "@/utils/data.js";
@@ -120,11 +119,7 @@ const Login = () => {
 
           <div className="space-y-2">
             <Label className="text-sm font-medium text-gray-700">Role</Label>
-            <RadioGroup 
-              value={input.role} 
-              onValueChange={(value) => setInput({ ...input, role: value })}
-              className="flex flex-col space-y-2"
-            >
+            <div className="flex flex-col space-y-2">
               <div className="flex items-center space-x-2">
                 <input
                   type="radio"
@@ -149,7 +144,7 @@ const Login = () => {
                 />
                 <Label htmlFor="recruiter" className="text-sm text-gray-700">Recruiter</Label>
               </div>
-            </RadioGroup>
+            </div>
           </div>
 
           <Button
