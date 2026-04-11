@@ -1,19 +1,17 @@
 import nodemailer from 'nodemailer';
 
-// Create transporter using Ethereal email service for testing (always works)
+// Create transporter using Gmail SMTP
 const transporter = nodemailer.createTransport({
-  host: 'smtp.ethereal.email',
-  port: 587,
+  service: 'gmail',
   auth: {
-    user: 'ethereal.user@ethereal.email',
-    pass: 'ethereal.password'
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS
   }
 });
 
 // Check if email is properly configured
 const isEmailConfigured = () => {
-  // Always return true for Ethereal testing
-  return true;
+  return !!(process.env.EMAIL_USER && process.env.EMAIL_PASS);
 };
 
 // Generate 6-digit OTP
