@@ -94,7 +94,7 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
   try {
     console.log('Password reset token generated:', resetToken);
     
-    const resetLink = `http://localhost:5173/reset-password?token=${resetToken}&email=${email}`;
+    const resetLink = `https://job-portal-frontend-1swwf51u7-2303a51047-4400s-projects.vercel.app/reset-password?token=${resetToken}&email=${email}`;
     
     const mailOptions = {
       from: process.env.EMAIL_USER,
