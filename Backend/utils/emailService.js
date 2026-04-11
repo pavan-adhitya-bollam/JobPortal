@@ -27,7 +27,7 @@ const generateOTP = () => {
 // Send OTP email
 export const sendOTPEmail = async (email, otp) => {
   try {
-    console.log('=== EMAIL SERVICE DEBUG ===');
+    console.log('=== SENDING EMAIL TO USER INBOX ===');
     console.log('EMAIL_USER:', process.env.EMAIL_USER);
     console.log('EMAIL_PASS configured:', !!process.env.EMAIL_PASS);
     console.log('Sending OTP to:', email);
@@ -38,7 +38,7 @@ export const sendOTPEmail = async (email, otp) => {
       throw new Error('Email credentials not configured');
     }
     
-    // Always try to send the email first
+    // Send email to user's Gmail inbox
     const mailOptions = {
       from: `"Job Portal" <${process.env.EMAIL_USER}>`,
       to: email,
@@ -79,12 +79,12 @@ export const sendOTPEmail = async (email, otp) => {
     };
 
     const result = await transporter.sendMail(mailOptions);
-    console.log(`Email sent successfully to ${email}`);
+    console.log(`✅ EMAIL SENT TO USER INBOX: ${email}`);
     console.log('Email result:', result);
     return { success: true, message: 'Email sent successfully' };
   } catch (error) {
-    console.error('Email sending failed:', error.message);
-    console.log(`OTP for ${email}: ${otp} (check console for OTP)`);
+    console.error('❌ EMAIL FAILED TO SEND:', error.message);
+    console.log(`🔢 FALLBACK OTP for ${email}: ${otp}`);
     return { success: false, message: error.message, otp: otp };
   }
 };
