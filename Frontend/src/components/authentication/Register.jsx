@@ -57,7 +57,6 @@ const Register = () => {
       
       if (res.data.success) {
         setOtpSent(true);
-        setCooldown(30); // Set 30 second cooldown
         toast.success(res.data.message);
       } else {
         toast.error(res.data.message);
@@ -68,11 +67,6 @@ const Register = () => {
   };
 
   const resendOTPHandler = async () => {
-    if (cooldown > 0) {
-      toast.error(`Please wait ${cooldown} seconds before resending OTP`);
-      return;
-    }
-    
     await sendOTPHandler();
   };
 
