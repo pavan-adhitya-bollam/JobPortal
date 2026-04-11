@@ -1,12 +1,17 @@
 import nodemailer from 'nodemailer';
 
-// Create transporter using Gmail SMTP
+// Create transporter using Gmail SMTP with proper configuration
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
-  }
+  },
+  tls: {
+    rejectUnauthorized: false
+  },
+  secure: true,
+  port: 465
 });
 
 // Check if email is properly configured
@@ -30,7 +35,7 @@ export const sendOTPEmail = async (email, otp) => {
     
     // Always try to send the email first
     const mailOptions = {
-      from: process.env.EMAIL_USER,
+      from: `"Job Portal" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: 'Job Portal - Email Verification OTP',
       html: `
@@ -69,11 +74,11 @@ export const sendOTPEmail = async (email, otp) => {
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`Email sent successfully to ${email}`);
+    console.log(`✅ Email sent successfully to ${email}`);
     return true;
   } catch (error) {
-    console.error('Email sending failed:', error.message);
-    console.log(`OTP for ${email}: ${otp} (check console for OTP)`);
+    console.error('❌ Email sending failed:', error.message);
+    console.log(`🔢 OTP for ${email}: ${otp} (check console for OTP)`);
     return true; // Always return true so registration continues
   }
 };
