@@ -35,7 +35,7 @@ const Login = () => {
     }
 
     try {
-      const res = await axios.post(`${USER_API_ENDPOINT}/forgot-password`, { email: input.email });
+      const res = await axios.post(`${AUTH_API_ENDPOINT}/forgot-password`, { email: input.email });
       
       if (res.data.success) {
         toast.success("Password reset link sent to your email");

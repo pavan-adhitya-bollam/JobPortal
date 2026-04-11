@@ -7,8 +7,8 @@ import {
   sendOTP,
   verifyOTP,
   completeRegistration,
+  forgotPassword,
 } from "../controllers/user.controller.js";
-import { forgotPassword } from "../controllers/otp.controller.js";
 import authenticateToken from "../middleware/isAuthenticated.js";
 import { singleUpload } from "../middleware/multer.js";
 

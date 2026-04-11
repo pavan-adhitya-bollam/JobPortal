@@ -88,10 +88,10 @@ export const login = async (req, res) => {
     console.log('Login request received:', req.body);
     const { email, password, role } = req.body;
 
-    if (!email || !password) {
+    if (!email || !password || !role) {
       console.log('Missing required fields:', { email: !!email, password: !!password, role: !!role });
       return res.status(400).json({
-        message: "Email and password are required",
+        message: "Missing required fields",
         success: false,
       });
     }
@@ -116,7 +116,13 @@ export const login = async (req, res) => {
       });
     }
 
-    // Role is optional - login works without role validation
+    if (user.role !== role) {
+      console.log('Role mismatch. User role:', user.role, 'Requested role:', role);
+      return res.status(403).json({
+        message: "Invalid role",
+        success: false,
+      });
+    }
 
     // Generate JWT token
     const token = jwt.sign(
@@ -379,6 +385,58 @@ export const verifyOTP = async (req, res) => {
     console.error("Verify OTP error:", error);
     return res.status(500).json({
       message: "Failed to verify OTP",
+      success: false,
+    });
+  }
+};
+
+// ================= FORGOT PASSWORD =================
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        message: "Email is required",
+        success: false,
+      });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found with this email",
+        success: false,
+      });
+    }
+
+    // Generate OTP for password reset
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Store OTP in user document (you might want to add a field for this)
+    user.resetPasswordOTP = otp;
+    user.resetPasswordExpires = expiresAt;
+    await user.save();
+
+    // Send OTP email
+    const emailSent = await sendOTPEmail(email, otp);
+    
+    if (emailSent) {
+      return res.status(200).json({
+        message: "Password reset OTP sent to your email",
+        success: true,
+      });
+    } else {
+      return res.status(200).json({
+        message: "Password reset OTP generated (check console for test mode)",
+        success: true,
+      });
+    }
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    return res.status(500).json({
+      message: "Server error processing forgot password",
       success: false,
     });
   }
