@@ -22,13 +22,13 @@ const generateOTP = () => {
 // Send OTP email
 export const sendOTPEmail = async (email, otp) => {
   try {
-    // Check if email is properly configured
-    if (!isEmailConfigured()) {
-      console.log('Email not configured - using test mode');
-      console.log(`Test OTP for ${email}: ${otp}`);
-      return { success: true, message: 'OTP generated (test mode)' };
-    }
-
+    console.log('=== EMAIL SERVICE DEBUG ===');
+    console.log('EMAIL_USER:', process.env.EMAIL_USER);
+    console.log('EMAIL_PASS configured:', !!process.env.EMAIL_PASS);
+    console.log('Sending OTP to:', email);
+    console.log('OTP:', otp);
+    
+    // Always try to send the email first
     const mailOptions = {
       from: process.env.EMAIL_USER,
       to: email,
@@ -55,9 +55,9 @@ export const sendOTPEmail = async (email, otp) => {
             
             <p style="color: #6b7280; font-size: 14px; line-height: 1.6;">
               <strong>Important:</strong>
-              <br>• This OTP will expire in <strong>10 minutes</strong>
-              <br>• Do not share this OTP with anyone
-              <br>• If you didn't request this OTP, please ignore this email
+              <br>· This OTP will expire in <strong>10 minutes</strong>
+              <br>· Do not share this OTP with anyone
+              <br>· If you didn't request this OTP, please ignore this email
             </p>
           </div>
           
@@ -69,12 +69,12 @@ export const sendOTPEmail = async (email, otp) => {
     };
 
     await transporter.sendMail(mailOptions);
-    console.log(`Real OTP sent to ${email}: ${otp}`);
+    console.log(`Email sent successfully to ${email}`);
     return true;
   } catch (error) {
-    console.error('SMTP connection failed - using fallback mode:', error.message);
-    console.log(`Fallback OTP for ${email}: ${otp}`);
-    return true; // Continue with OTP even if email fails
+    console.error('Email sending failed:', error.message);
+    console.log(`OTP for ${email}: ${otp} (check console for OTP)`);
+    return true; // Always return true so registration continues
   }
 };
 
