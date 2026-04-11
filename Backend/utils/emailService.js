@@ -2,16 +2,16 @@ import nodemailer from 'nodemailer';
 
 // Create transporter using Gmail SMTP with proper configuration
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASS
   },
   tls: {
     rejectUnauthorized: false
-  },
-  secure: true,
-  port: 465
+  }
 });
 
 // Check if email is properly configured
@@ -32,6 +32,11 @@ export const sendOTPEmail = async (email, otp) => {
     console.log('EMAIL_PASS configured:', !!process.env.EMAIL_PASS);
     console.log('Sending OTP to:', email);
     console.log('OTP:', otp);
+    
+    // Verify email configuration first
+    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+      throw new Error('Email credentials not configured');
+    }
     
     // Always try to send the email first
     const mailOptions = {
@@ -73,13 +78,14 @@ export const sendOTPEmail = async (email, otp) => {
       `,
     };
 
-    await transporter.sendMail(mailOptions);
-    console.log(`✅ Email sent successfully to ${email}`);
-    return true;
+    const result = await transporter.sendMail(mailOptions);
+    console.log(`Email sent successfully to ${email}`);
+    console.log('Email result:', result);
+    return { success: true, message: 'Email sent successfully' };
   } catch (error) {
-    console.error('❌ Email sending failed:', error.message);
-    console.log(`🔢 OTP for ${email}: ${otp} (check console for OTP)`);
-    return true; // Always return true so registration continues
+    console.error('Email sending failed:', error.message);
+    console.log(`OTP for ${email}: ${otp} (check console for OTP)`);
+    return { success: false, message: error.message, otp: otp };
   }
 };
 
@@ -88,12 +94,15 @@ export const generateAndSendOTP = async (email) => {
   const otp = generateOTP();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes from now
   
-  const emailSent = await sendOTPEmail(email, otp);
+  const emailResult = await sendOTPEmail(email, otp);
   
-  if (emailSent) {
+  if (emailResult.success) {
+    return { otp, expiresAt };
+  } else {
+    // Still return OTP data even if email fails, so registration can continue
+    console.log('Email failed but continuing with OTP generation');
     return { otp, expiresAt };
   }
-  return null;
 };
 
 // Send job application confirmation email
