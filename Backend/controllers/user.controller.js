@@ -1,7 +1,7 @@
 import { User } from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { generateAndSendOTP } from "../utils/emailService.js";
+import { generateAndSendOTP, sendOTPEmail } from "../utils/emailService.js";
 
 // ================= REGISTER =================
 export const register = async (req, res) => {
@@ -88,10 +88,10 @@ export const login = async (req, res) => {
     console.log('Login request received:', req.body);
     const { email, password, role } = req.body;
 
-    if (!email || !password || !role) {
+    if (!email || !password) {
       console.log('Missing required fields:', { email: !!email, password: !!password, role: !!role });
       return res.status(400).json({
-        message: "Missing required fields",
+        message: "Email and password are required",
         success: false,
       });
     }
@@ -116,13 +116,7 @@ export const login = async (req, res) => {
       });
     }
 
-    if (user.role !== role) {
-      console.log('Role mismatch. User role:', user.role, 'Requested role:', role);
-      return res.status(403).json({
-        message: "Invalid role",
-        success: false,
-      });
-    }
+    // Role is optional - login works without role validation
 
     // Generate JWT token
     const token = jwt.sign(
