@@ -29,4 +29,9 @@ router.route("/complete-registration").post(singleUpload, completeRegistration);
 // Forgot Password Route
 router.route("/forgot-password").post(forgotPassword);
 
+// Test route
+router.route("/test").get((req, res) => {
+  res.json({ message: "User routes are working", timestamp: new Date().toISOString() });
+});
+
 export default router;
