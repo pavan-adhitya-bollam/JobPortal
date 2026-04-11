@@ -8,6 +8,7 @@ import {
   verifyOTP,
   completeRegistration,
 } from "../controllers/user.controller.js";
+import { forgotPassword } from "../controllers/otp.controller.js";
 import authenticateToken from "../middleware/isAuthenticated.js";
 import { singleUpload } from "../middleware/multer.js";
 
@@ -25,7 +26,7 @@ router.route("/send-otp").post(sendOTP);
 router.route("/verify-otp").post(verifyOTP);
 router.route("/complete-registration").post(singleUpload, completeRegistration);
 
-// Forgot Password Route - Temporarily removed for deployment
-// router.route("/forgot-password").post(forgotPassword);
+// Forgot Password Route
+router.route("/forgot-password").post(forgotPassword);
 
 export default router;
